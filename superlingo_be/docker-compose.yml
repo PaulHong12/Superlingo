@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16
+    container_name: superlingo_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=superlingo_db
+      - POSTGRES_USER=superlingo_user
+      - POSTGRES_PASSWORD=superlingo_password
+    # --- THE FIX ---
+    # This section tells Docker how to check if the database is ready.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superlingo_user -d superlingo_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    container_name: superlingo_web
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_NAME=superlingo_db
+      - DB_USER=superlingo_user
+      - DB_PASSWORD=superlingo_password
+      - DB_HOST=db
+      - DB_PORT=5432
+    # --- THE FIX ---
+    # This section tells the web app to wait for the database to be "healthy".
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
